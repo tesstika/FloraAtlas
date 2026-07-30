@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useObservationStore } from '@/stores/observation'
 
 import StageVisual from '@/components/watch/StageVisual.vue'
@@ -27,18 +27,29 @@ const modalTitle = ref('')
 const modalText = ref('')
 const modalSuccess = ref(true)
 
+const selectedStageIndex = ref(0)
+
 const obs = computed(() => observationStore.currentObservation)
 const stages = computed(() => observationStore.observationStages)
-const currentStageIndex = computed(() => obs.value?.current_stage_index || 0)
-const currentStage = computed(() => stages.value[currentStageIndex.value] || null)
+const unlockedStageIndex = computed(() => obs.value?.current_stage_index || 0)
+const currentStage = computed(() => stages.value[selectedStageIndex.value] || stages.value[0] || null)
 
-onMounted(() => {
-  observationStore.fetchObservationDetails(Number(props.id))
+onMounted(async () => {
+  await observationStore.fetchObservationDetails(Number(props.id))
+  if (obs.value) {
+    selectedStageIndex.value = obs.value.current_stage_index
+  }
+})
+
+watch(obs, (newObs) => {
+  if (newObs && selectedStageIndex.value > newObs.current_stage_index) {
+    selectedStageIndex.value = newObs.current_stage_index
+  }
 })
 
 function selectStage(index: number) {
-  if (obs.value) {
-    obs.value.current_stage_index = index
+  if (index <= unlockedStageIndex.value) {
+    selectedStageIndex.value = index
   }
 }
 
@@ -63,8 +74,9 @@ async function handleUseFertilizer() {
 
 function handleNextStage() {
   if (!obs.value || !stages.value.length) return
-  const nextIdx = (obs.value.current_stage_index + 1) % stages.value.length
-  obs.value.current_stage_index = nextIdx
+  if (selectedStageIndex.value < unlockedStageIndex.value) {
+    selectedStageIndex.value++
+  }
 }
 
 async function handleGameComplete(isPassed: boolean, score: number) {
@@ -72,12 +84,16 @@ async function handleGameComplete(isPassed: boolean, score: number) {
 
   try {
     const res = await observationStore.submitStageAttempt(obs.value.id, isPassed, score)
+    
     if (isPassed) {
       showResultModal(
         'Задание успешно выполнено!',
         'Растение продолжает развитие без потери здоровья. Вам начислено 1 удобрение.',
         true
       )
+      if (res.current_stage_index > selectedStageIndex.value) {
+        selectedStageIndex.value = res.current_stage_index
+      }
     } else {
       showResultModal(
         'Ответ неверный',
@@ -131,15 +147,19 @@ function showResultModal(title: string, text: string, isSuccess: boolean) {
 
           <div class="tag-row">
             <span class="tag">Удобрения: <strong>{{ obs.fertilizer_count }}</strong></span>
-            <span class="tag">Этап: <strong>{{ currentStageIndex + 1 }}/{{ stages.length }}</strong></span>
+            <span class="tag">Доступно этапов: <strong>{{ unlockedStageIndex + 1 }}/{{ stages.length }}</strong></span>
           </div>
 
           <div class="actions">
             <button class="btn secondary" @click="handleUseFertilizer">
               Использовать удобрение
             </button>
-            <button class="btn ghost" @click="handleNextStage">
-              Следующий этап →
+            <button
+              class="btn ghost"
+              :disabled="selectedStageIndex >= unlockedStageIndex"
+              @click="handleNextStage"
+            >
+              Следующий открытый этап →
             </button>
           </div>
         </div>
@@ -148,37 +168,42 @@ function showResultModal(title: string, text: string, isSuccess: boolean) {
           <TheoryPanel
             v-if="currentStage"
             :stage="currentStage"
-            :stage-order="currentStageIndex + 1"
+            :stage-order="selectedStageIndex + 1"
             :total-stages="stages.length"
           />
 
           <template v-if="currentStage">
             <QuizGame
               v-if="currentStage.game_type === 'quiz'"
+              :key="'quiz-' + selectedStageIndex"
               :payload="currentStage.game_payload"
               @complete="handleGameComplete"
             />
 
             <MatchGame
               v-else-if="currentStage.game_type === 'match'"
+              :key="'match-' + selectedStageIndex"
               :payload="currentStage.game_payload"
               @complete="handleGameComplete"
             />
 
             <GroupingGame
               v-else-if="currentStage.game_type === 'grouping'"
+              :key="'grouping-' + selectedStageIndex"
               :payload="currentStage.game_payload"
               @complete="handleGameComplete"
             />
 
             <CrosswordGame
               v-else-if="currentStage.game_type === 'crossword'"
+              :key="'crossword-' + selectedStageIndex"
               :payload="currentStage.game_payload"
               @complete="handleGameComplete"
             />
 
             <TableGame
               v-else-if="currentStage.game_type === 'table'"
+              :key="'table-' + selectedStageIndex"
               :payload="currentStage.game_payload"
               @complete="handleGameComplete"
             />
@@ -186,7 +211,8 @@ function showResultModal(title: string, text: string, isSuccess: boolean) {
 
           <StageCarousel
             :stages="stages"
-            :current-index="currentStageIndex"
+            :current-index="selectedStageIndex"
+            :unlocked-index="unlockedStageIndex"
             @select-stage="selectStage"
           />
         </div>

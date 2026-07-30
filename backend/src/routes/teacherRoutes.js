@@ -4,7 +4,8 @@ import {
   getStudentsByGroup,
   getStudentObservations,
   updateStudentObservation,
-  updatePlantContent
+  updatePlantContent,
+  createPlant
 } from '../controllers/teacherController.js'
 import { authenticateToken, requireRole } from '../middleware/authMiddleware.js'
 
@@ -17,5 +18,6 @@ router.get('/students', getStudentsByGroup)
 router.get('/student-observations/:student_id', getStudentObservations)
 router.patch('/observations/:id', updateStudentObservation)
 router.put('/plants/:id', updatePlantContent)
+router.post('/plants', createPlant)
 
 export default router

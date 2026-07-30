@@ -61,6 +61,11 @@ export const useTeacherStore = defineStore('teacher', () => {
     return res.data
   }
 
+  async function createPlantCard(payload: { name: string; description: string; stages_count: number; region_name: string; icon?: string }) {
+    const res = await api.post<{ message: string; plant: any }>('/teacher/plants', payload)
+    return res.data
+  }
+
   return {
     groups,
     students,
@@ -70,6 +75,7 @@ export const useTeacherStore = defineStore('teacher', () => {
     fetchStudents,
     fetchStudentObservations,
     updateObservation,
-    updatePlantCard
+    updatePlantCard,
+    createPlantCard
   }
 })

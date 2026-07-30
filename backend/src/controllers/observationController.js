@@ -131,7 +131,7 @@ export function completeStage(req, res, next) {
   try {
     const { id } = req.params
     const userId = req.user.id
-    const { is_passed, score = 0 } = req.body
+    const { is_passed, score = 0, stage_index } = req.body
 
     const observation = db.prepare(`
       SELECT * FROM user_plant_observations
@@ -148,10 +148,12 @@ export function completeStage(req, res, next) {
       ORDER BY stage_order ASC
     `).all(observation.plant_id)
 
-    const currentStage = stages[observation.current_stage_index]
-    if (!currentStage) {
-      return res.status(400).json({ error: 'Недействительный этап развития' })
+    if (!stages || stages.length === 0) {
+      return res.status(400).json({ error: 'У растения нет определенных этапов' })
     }
+
+    const targetStageIndex = stage_index !== undefined ? Number(stage_index) : observation.current_stage_index
+    const currentStage = stages[targetStageIndex] || stages[0]
 
     let healthDelta = 0
     let fertilizerAwarded = 0
@@ -162,8 +164,10 @@ export function completeStage(req, res, next) {
     if (is_passed) {
       fertilizerAwarded = currentStage.fertilizer_reward || 1
       newFertilizer += fertilizerAwarded
-      if (newStageIndex < stages.length - 1) {
-        newStageIndex += 1
+
+      // Unlock next stage if completing the current highest unlocked stage
+      if (targetStageIndex === observation.current_stage_index && observation.current_stage_index < stages.length - 1) {
+        newStageIndex = observation.current_stage_index + 1
       }
     } else {
       healthDelta = -(currentStage.health_penalty || 10)
