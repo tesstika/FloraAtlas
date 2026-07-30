@@ -36,12 +36,12 @@ const biomes = [
   { id: 'Тропики', label: 'Тропики', icon: '🌴' }
 ]
 
-function getPlantCoords(plant: Plant): [number, number] {
+function getBaseRegionCoords(plant: Plant): [number, number] {
   const nameLower = plant.name.toLowerCase()
   const regionLower = (plant.region_name || '').toLowerCase()
 
   if (nameLower.includes('ель') || nameLower.includes('spruce') || regionLower.includes('сибирь') || regionLower.includes('тайга')) {
-    return [60.0, 85.0]
+    return [59.0, 82.0]
   }
   if (nameLower.includes('баобаб') || nameLower.includes('baobab') || regionLower.includes('мадагаскар')) {
     return [-18.9, 46.8]
@@ -53,18 +53,52 @@ function getPlantCoords(plant: Plant): [number, number] {
     return [9.0, 40.5]
   }
 
-  if (regionLower.includes('северная америка')) return [45.0, -100.0]
-  if (regionLower.includes('южная америка') || regionLower.includes('амазон')) return [-12.0, -60.0]
-  if (regionLower.includes('европа') || regionLower.includes('альп')) return [50.0, 15.0]
-  if (regionLower.includes('саванн') || regionLower.includes('африка')) return [-5.0, 25.0]
-  if (regionLower.includes('тропик')) return [3.0, 102.0]
+  if (regionLower.includes('северная америка')) return [42.0, -102.0]
+  if (regionLower.includes('южная америка') || regionLower.includes('амазон')) return [-10.0, -58.0]
+  if (regionLower.includes('европа') || regionLower.includes('альп')) return [50.0, 14.0]
+  if (regionLower.includes('саванн') || regionLower.includes('африка')) return [-8.0, 26.0]
+  if (regionLower.includes('тропик')) return [4.0, 102.0]
   if (regionLower.includes('австрал') || regionLower.includes('океан')) return [-25.0, 134.0]
 
-  // Fallback: unique coordinates based on plant.id to avoid marker overlapping
   const pId = plant.id || 1
-  const lat = 15 + ((pId * 19) % 50) - 25
-  const lng = ((pId * 37) % 280) - 140
+  const lat = 20 + ((pId * 17) % 40) - 20
+  const lng = ((pId * 31) % 260) - 130
   return [lat, lng]
+}
+
+function computeNonOverlappingCoords(plantsList: Plant[]): Map<number, [number, number]> {
+  const result = new Map<number, [number, number]>()
+  const placed: Array<[number, number]> = []
+
+  plantsList.forEach(plant => {
+    const [baseLat, baseLng] = getBaseRegionCoords(plant)
+
+    const pId = plant.id || 1
+    let lat = baseLat + (((pId * 13) % 9) - 4) * 0.8
+    let lng = baseLng + (((pId * 23) % 11) - 5) * 1.0
+
+    let attempts = 0
+    while (attempts < 25) {
+      const hasCollision = placed.some(([pLat, pLng]) => {
+        const dLat = Math.abs(lat - pLat)
+        const dLng = Math.abs(lng - pLng)
+        return dLat < 3.2 && dLng < 3.2
+      })
+
+      if (!hasCollision) break
+
+      attempts++
+      const angle = attempts * (Math.PI / 3)
+      const radius = 2.5 + attempts * 1.2
+      lat = baseLat + Math.sin(angle) * radius
+      lng = baseLng + Math.cos(angle) * radius
+    }
+
+    placed.push([lat, lng])
+    result.set(plant.id, [lat, lng])
+  })
+
+  return result
 }
 
 function renderMarkers() {
@@ -73,8 +107,10 @@ function renderMarkers() {
   markerMap.forEach(m => m.remove())
   markerMap.clear()
 
+  const plantCoordsMap = computeNonOverlappingCoords(props.plants)
+
   props.plants.forEach(plant => {
-    const [lat, lng] = getPlantCoords(plant)
+    const [lat, lng] = plantCoordsMap.get(plant.id) || [0, 0]
 
     const matchesFilter = activeBiomeFilter.value === 'Все' ||
       plant.region_name.toLowerCase().includes(activeBiomeFilter.value.toLowerCase()) ||
