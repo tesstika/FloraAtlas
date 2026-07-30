@@ -41,3 +41,6 @@ coverage/
 scratch/
 tmp/
 Task/
+.agents/
+.idea/
+.vscode/
