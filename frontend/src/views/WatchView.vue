@@ -67,8 +67,9 @@ async function handleUseFertilizer() {
   try {
     const res = await observationStore.applyFertilizer(obs.value.id)
     toastRef.value?.showToast(res.message)
-  } catch (err: any) {
-    toastRef.value?.showToast(err.response?.data?.error || 'Ошибка применения удобрения')
+  } catch (error) {
+    console.error('Save error:', error)
+    toastRef.value?.showToast('Ошибка применения удобрения')
   }
 }
 
@@ -83,7 +84,12 @@ async function handleGameComplete(isPassed: boolean, score: number) {
   if (!obs.value) return
 
   try {
-    const res = await observationStore.submitStageAttempt(obs.value.id, isPassed, score)
+    const res = await observationStore.submitStageAttempt(
+      obs.value.id,
+      isPassed,
+      score,
+      selectedStageIndex.value
+    )
     
     if (isPassed) {
       showResultModal(
@@ -101,8 +107,9 @@ async function handleGameComplete(isPassed: boolean, score: number) {
         false
       )
     }
-  } catch (err: any) {
-    toastRef.value?.showToast(err.response?.data?.error || 'Ошибка сохранения результата')
+  } catch (error) {
+    console.error('Save error:', error)
+    toastRef.value?.showToast('Ошибка сохранения результата')
   }
 }
 

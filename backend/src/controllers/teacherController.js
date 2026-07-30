@@ -150,7 +150,6 @@ export function createPlant(req, res, next) {
 
     const numStages = Math.max(1, Number(stages_count))
 
-    // Random map placement coordinates
     const map_x = Math.floor(Math.random() * 60) + 20
     const map_y = Math.floor(Math.random() * 50) + 25
 
@@ -193,6 +192,27 @@ export function createPlant(req, res, next) {
       plant: newPlant
     })
   } catch (err) {
+    next(err)
+  }
+}
+
+export function deletePlant(req, res, next) {
+  try {
+    const id = Number(req.params.id)
+
+    const plant = db.prepare('SELECT * FROM plants WHERE id = ?').get(id)
+    if (!plant) {
+      return res.status(404).json({ error: 'Растение не найдено' })
+    }
+
+    // Clean up dependent tables explicitly
+    db.prepare('DELETE FROM user_plant_observations WHERE plant_id = ?').run(id)
+    db.prepare('DELETE FROM plant_stages WHERE plant_id = ?').run(id)
+    db.prepare('DELETE FROM plants WHERE id = ?').run(id)
+
+    return res.json({ message: 'Растение и все связанные данные успешно удалены' })
+  } catch (err) {
+    console.error('Delete plant error:', err)
     next(err)
   }
 }

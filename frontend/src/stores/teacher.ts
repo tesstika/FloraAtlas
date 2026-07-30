@@ -66,6 +66,11 @@ export const useTeacherStore = defineStore('teacher', () => {
     return res.data
   }
 
+  async function deletePlantCard(id: number) {
+    const res = await api.delete<{ message: string }>(`/teacher/plants/${id}`)
+    return res.data
+  }
+
   return {
     groups,
     students,
@@ -76,6 +81,7 @@ export const useTeacherStore = defineStore('teacher', () => {
     fetchStudentObservations,
     updateObservation,
     updatePlantCard,
-    createPlantCard
+    createPlantCard,
+    deletePlantCard
   }
 })

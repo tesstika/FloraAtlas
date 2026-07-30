@@ -2,6 +2,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { usePlantStore } from '@/stores/plants'
 import { useTeacherStore } from '@/stores/teacher'
+import { useObservationStore } from '@/stores/observation'
 
 const emit = defineEmits<{
   (e: 'toast', message: string): void
@@ -9,6 +10,7 @@ const emit = defineEmits<{
 
 const plantStore = usePlantStore()
 const teacherStore = useTeacherStore()
+const observationStore = useObservationStore()
 
 const selectedPlantId = ref<number | null>(null)
 const name = ref('')
@@ -45,6 +47,11 @@ function updateForm() {
     description.value = p.description
     regionName.value = p.region_name
     stagesCount.value = p.stages_count
+  } else {
+    name.value = ''
+    description.value = ''
+    regionName.value = ''
+    stagesCount.value = 4
   }
 }
 
@@ -64,7 +71,44 @@ async function savePlantChanges() {
     }
     emit('toast', 'Содержание карточки растения и структура этапов успешно обновлены!')
   } catch (err: any) {
+    console.error('Save error:', err)
     emit('toast', err.response?.data?.error || 'Ошибка сохранения карточки')
+  } finally {
+    isSubmitting.value = false
+  }
+}
+
+async function handleDeletePlant() {
+  if (!selectedPlantId.value) return
+  const currentPlant = plantStore.plants.find(p => p.id === selectedPlantId.value)
+  const plantName = currentPlant ? currentPlant.name : 'это растение'
+
+  if (!window.confirm(`Вы уверены, что хотите удалить растение "${plantName}"?`)) {
+    return
+  }
+
+  isSubmitting.value = true
+  try {
+    const deletedId = selectedPlantId.value
+    await teacherStore.deletePlantCard(deletedId)
+
+    // Clean up local stores
+    plantStore.plants = plantStore.plants.filter(p => p.id !== deletedId)
+    observationStore.observations = observationStore.observations.filter(o => o.plant_id !== deletedId)
+
+    await plantStore.fetchPlants()
+
+    if (plantStore.plants.length > 0) {
+      selectedPlantId.value = plantStore.plants[0].id
+    } else {
+      selectedPlantId.value = null
+    }
+
+    updateForm()
+    emit('toast', 'Растение успешно удалено из каталога!')
+  } catch (err: any) {
+    console.error('Save error:', err)
+    emit('toast', err.response?.data?.error || 'Ошибка удаления растения')
   } finally {
     isSubmitting.value = false
   }
@@ -98,6 +142,7 @@ async function handleAddPlant() {
 
     emit('toast', 'Новое растение успешно добавлено в каталог!')
   } catch (err: any) {
+    console.error('Save error:', err)
     emit('toast', err.response?.data?.error || 'Ошибка добавления растения')
   } finally {
     isSubmitting.value = false
@@ -118,7 +163,7 @@ async function handleAddPlant() {
       </button>
     </div>
 
-    <div class="form-grid">
+    <div v-if="plantStore.plants.length > 0" class="form-grid">
       <div class="field">
         <label>Выберите растение</label>
         <select v-model="selectedPlantId">
@@ -149,7 +194,14 @@ async function handleAddPlant() {
       </div>
     </div>
 
-    <div class="actions">
+    <div v-else class="empty-notice">
+      В каталоге нет растений. Нажмите "+ Добавить новое растение", чтобы создать первое.
+    </div>
+
+    <div v-if="plantStore.plants.length > 0" class="actions">
+      <button class="btn danger-btn" :disabled="isSubmitting" @click="handleDeletePlant">
+        🗑️ Удалить растение
+      </button>
       <button class="btn" :disabled="isSubmitting" @click="savePlantChanges">
         Сохранить изменения
       </button>
@@ -245,6 +297,27 @@ async function handleAddPlant() {
 .actions {
   display: flex;
   justify-content: flex-end;
+  gap: 12px;
+}
+
+.danger-btn {
+  background: #fdf2f0;
+  color: var(--danger);
+  border: 1px solid #f5c6cb;
+}
+
+.danger-btn:hover {
+  background: var(--danger);
+  color: white;
+}
+
+.empty-notice {
+  padding: 32px;
+  text-align: center;
+  color: var(--muted);
+  border: 1px dashed var(--line);
+  border-radius: 16px;
+  margin-bottom: 24px;
 }
 
 .modal-backdrop {

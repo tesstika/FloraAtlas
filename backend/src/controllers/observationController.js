@@ -129,7 +129,7 @@ export function useFertilizer(req, res, next) {
 
 export function completeStage(req, res, next) {
   try {
-    const { id } = req.params
+    const id = Number(req.params.id)
     const userId = req.user.id
     const { is_passed, score = 0, stage_index } = req.body
 
@@ -152,7 +152,10 @@ export function completeStage(req, res, next) {
       return res.status(400).json({ error: 'У растения нет определенных этапов' })
     }
 
-    const targetStageIndex = stage_index !== undefined ? Number(stage_index) : observation.current_stage_index
+    const targetStageIndex = stage_index !== undefined
+      ? Math.max(0, Math.min(stages.length - 1, Number(stage_index)))
+      : observation.current_stage_index
+
     const currentStage = stages[targetStageIndex] || stages[0]
 
     let healthDelta = 0
@@ -161,11 +164,12 @@ export function completeStage(req, res, next) {
     let newFertilizer = observation.fertilizer_count
     let newStageIndex = observation.current_stage_index
 
-    if (is_passed) {
+    const passedBool = Boolean(is_passed)
+
+    if (passedBool) {
       fertilizerAwarded = currentStage.fertilizer_reward || 1
       newFertilizer += fertilizerAwarded
 
-      // Unlock next stage if completing the current highest unlocked stage
       if (targetStageIndex === observation.current_stage_index && observation.current_stage_index < stages.length - 1) {
         newStageIndex = observation.current_stage_index + 1
       }
@@ -177,7 +181,7 @@ export function completeStage(req, res, next) {
     db.prepare(`
       INSERT INTO stage_attempts (observation_id, stage_id, is_passed, score, health_delta, fertilizer_awarded)
       VALUES (?, ?, ?, ?, ?, ?)
-    `).run(id, currentStage.id, is_passed ? 1 : 0, score, healthDelta, fertilizerAwarded)
+    `).run(id, currentStage.id, passedBool ? 1 : 0, Number(score) || 0, healthDelta, fertilizerAwarded)
 
     db.prepare(`
       UPDATE user_plant_observations
@@ -186,8 +190,8 @@ export function completeStage(req, res, next) {
     `).run(newHealth, newFertilizer, newStageIndex, id)
 
     return res.json({
-      message: is_passed ? 'Задание успешно выполнено!' : 'Ответ неверный. Здоровье снижено.',
-      is_passed,
+      message: passedBool ? 'Задание успешно выполнено!' : 'Ответ неверный. Здоровье снижено.',
+      is_passed: passedBool,
       health: newHealth,
       fertilizer_count: newFertilizer,
       current_stage_index: newStageIndex,
@@ -195,6 +199,7 @@ export function completeStage(req, res, next) {
       health_penalty: healthDelta
     })
   } catch (err) {
+    console.error('Save stage result error:', err)
     next(err)
   }
 }
