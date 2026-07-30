@@ -20,6 +20,7 @@ const emit = defineEmits<{
 
 const userTreatments = ref<Record<string, string>>({})
 const isSubmitted = ref(false)
+const isFailed = ref(false)
 
 const treatmentsPool = props.payload.rows.map(r => r.treatment).sort(() => Math.random() - 0.5)
 
@@ -28,7 +29,6 @@ props.payload.rows.forEach(r => {
 })
 
 function submitTable() {
-  isSubmitted.value = true
   let correctCount = 0
 
   props.payload.rows.forEach(r => {
@@ -38,7 +38,17 @@ function submitTable() {
   })
 
   const isPassed = correctCount === props.payload.rows.length
+  isSubmitted.value = isPassed
+  isFailed.value = !isPassed
   emit('complete', isPassed, Math.round((correctCount / props.payload.rows.length) * 100))
+}
+
+function resetGame() {
+  props.payload.rows.forEach(r => {
+    userTreatments.value[r.symptom] = ''
+  })
+  isSubmitted.value = false
+  isFailed.value = false
 }
 </script>
 
@@ -63,9 +73,9 @@ function submitTable() {
             <select
               v-model="userTreatments[r.symptom]"
               :disabled="isSubmitted"
-              class="table-select"
+              @change="isFailed = false"
             >
-              <option value="">-- Выберите способ ухода --</option>
+              <option value="">-- Выберите решение --</option>
               <option v-for="t in treatmentsPool" :key="t" :value="t">
                 {{ t }}
               </option>
@@ -75,8 +85,23 @@ function submitTable() {
       </tbody>
     </table>
 
+    <div v-if="isFailed" class="failed-notice">
+      <span>❌ Таблица заполнена с ошибками. Измените выбранные ответы и проверьте снова.</span>
+    </div>
+
     <div class="game-actions">
-      <button class="btn" :disabled="isSubmitted" @click="submitTable">
+      <button
+        v-if="isFailed"
+        class="btn ghost"
+        @click="resetGame"
+      >
+        Сбросить ответы ↺
+      </button>
+      <button
+        class="btn"
+        :disabled="isSubmitted"
+        @click="submitTable"
+      >
         Проверить таблицу
       </button>
     </div>
@@ -99,31 +124,35 @@ function submitTable() {
   background: white;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid var(--line);
 }
 
 .game-table th,
 .game-table td {
-  padding: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  font-size: 0.88rem;
   text-align: left;
-  border-bottom: 1px solid var(--line);
 }
 
 .game-table th {
   background: var(--surface-soft);
-  color: var(--muted);
-  font-size: 0.85rem;
+  font-weight: 700;
 }
 
-.table-select {
-  width: 100%;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid var(--line);
+.failed-notice {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #fdf2f0;
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  border: 1px solid #f5c6cb;
 }
 
 .game-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
 }
 </style>

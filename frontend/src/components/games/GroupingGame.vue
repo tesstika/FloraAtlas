@@ -21,12 +21,23 @@ const itemsPool = ref<string[]>([])
 const groupAssignments = ref<Record<string, string[]>>({})
 const selectedItem = ref<string | null>(null)
 const isSubmitted = ref(false)
+const isFailed = ref(false)
 
-props.payload.groups.forEach(g => {
-  groupAssignments.value[g.name] = []
-  itemsPool.value.push(...g.items)
-})
-itemsPool.value.sort(() => Math.random() - 0.5)
+function initGame() {
+  itemsPool.value = []
+  groupAssignments.value = {}
+  selectedItem.value = null
+  isSubmitted.value = false
+  isFailed.value = false
+
+  props.payload.groups.forEach(g => {
+    groupAssignments.value[g.name] = []
+    itemsPool.value.push(...g.items)
+  })
+  itemsPool.value.sort(() => Math.random() - 0.5)
+}
+
+initGame()
 
 function selectPoolItem(item: string) {
   if (isSubmitted.value) return
@@ -38,10 +49,18 @@ function assignToGroup(groupName: string) {
   groupAssignments.value[groupName].push(selectedItem.value)
   itemsPool.value = itemsPool.value.filter(i => i !== selectedItem.value)
   selectedItem.value = null
+  isFailed.value = false
+}
+
+function unassignItem(groupName: string, item: string, event: MouseEvent) {
+  event.stopPropagation()
+  if (isSubmitted.value) return
+  groupAssignments.value[groupName] = groupAssignments.value[groupName].filter(i => i !== item)
+  itemsPool.value.push(item)
+  isFailed.value = false
 }
 
 function submitGrouping() {
-  isSubmitted.value = true
   let correct = true
 
   props.payload.groups.forEach(g => {
@@ -52,6 +71,8 @@ function submitGrouping() {
     })
   })
 
+  isSubmitted.value = correct
+  isFailed.value = !correct
   emit('complete', correct, correct ? 100 : 0)
 }
 </script>
@@ -62,13 +83,14 @@ function submitGrouping() {
     <p class="question">{{ payload.question }}</p>
 
     <div class="pool-box">
-      <p class="pool-label">Выберите элемент:</p>
+      <p class="pool-label">Выберите элемент из пула, затем нажмите на нужный блок категории:</p>
       <div class="items-flex">
         <button
           v-for="item in itemsPool"
           :key="item"
           class="item-btn"
           :class="{ selected: selectedItem === item }"
+          :disabled="isSubmitted"
           @click="selectPoolItem(item)"
         >
           {{ item }}
@@ -89,14 +111,26 @@ function submitGrouping() {
             v-for="i in groupAssignments[g.name]"
             :key="i"
             class="assigned-chip"
+            title="Нажмите, чтобы убрать обратно в пул"
+            @click="unassignItem(g.name, i, $event)"
           >
-            {{ i }}
+            {{ i }} ✕
           </span>
         </div>
       </div>
     </div>
 
+    <div v-if="isFailed" class="failed-notice">
+      <span>❌ Группировка выполнены неверно. Нажмите "Сбросить ответы" и попробуйте снова.</span>
+    </div>
+
     <div class="game-actions">
+      <button
+        class="btn ghost"
+        @click="initGame"
+      >
+        Сбросить ответы ↺
+      </button>
       <button
         class="btn"
         :disabled="itemsPool.length > 0 || isSubmitted"
@@ -144,6 +178,7 @@ function submitGrouping() {
   border: 1px solid var(--line);
   font-size: 0.88rem;
   font-weight: 600;
+
 }
 
 .item-btn.selected {
@@ -165,6 +200,11 @@ function submitGrouping() {
   padding: 14px;
   min-height: 120px;
   cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.group-card:hover {
+  border-color: var(--accent);
 }
 
 .group-card h4 {
@@ -186,10 +226,29 @@ function submitGrouping() {
   color: var(--accent);
   font-size: 0.82rem;
   font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.assigned-chip:hover {
+  background: #fdf2f0;
+  color: var(--danger);
+}
+
+.failed-notice {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #fdf2f0;
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  border: 1px solid #f5c6cb;
 }
 
 .game-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
 }
 </style>

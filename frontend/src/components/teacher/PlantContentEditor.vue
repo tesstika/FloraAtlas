@@ -200,7 +200,7 @@ async function handleAddPlant() {
 
       <div class="field full-width">
         <label>Описание и характеристики</label>
-        <textarea v-model="description" rows="4" placeholder="Теоретическое описание растения..."></textarea>
+        <textarea v-model="description" rows="4" style="resize: none;" placeholder="Теоретическое описание растения..."></textarea>
       </div>
     </div>
 
@@ -257,7 +257,7 @@ async function handleAddPlant() {
 
             <div class="field full-width">
               <label>Описание растения</label>
-              <textarea v-model="newDescription" rows="3" placeholder="Краткое ботаническое описание..."></textarea>
+              <textarea v-model="newDescription" rows="3" style="resize: none;" placeholder="Краткое ботаническое описание..."></textarea>
             </div>
           </div>
 
@@ -306,6 +306,15 @@ async function handleAddPlant() {
   grid-column: 1 / -1;
 }
 
+.field input,
+.field select,
+.field textarea {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  resize: none;
+}
+
 .actions {
   display: flex;
   justify-content: flex-end;
@@ -345,11 +354,14 @@ async function handleAddPlant() {
 }
 
 .modal-card {
-  width: min(540px, 100%);
+  width: min(540px, 92vw);
+  max-width: 100%;
   padding: 28px;
   border-radius: 24px;
   background: white;
   box-shadow: var(--shadow-lg);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .modal-card h3 {
@@ -368,6 +380,8 @@ async function handleAddPlant() {
   grid-template-columns: 1fr 1fr;
   gap: 14px;
   margin-bottom: 24px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .modal-actions {

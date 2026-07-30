@@ -20,13 +20,13 @@ const emit = defineEmits<{
 
 const userAnswers = ref<Record<number, string>>({})
 const isSubmitted = ref(false)
+const isFailed = ref(false)
 
 props.payload.clues.forEach(c => {
   userAnswers.value[c.number] = ''
 })
 
 function submitCrossword() {
-  isSubmitted.value = true
   let correctCount = 0
 
   props.payload.clues.forEach(c => {
@@ -37,7 +37,17 @@ function submitCrossword() {
   })
 
   const isPassed = correctCount === props.payload.clues.length
+  isSubmitted.value = isPassed
+  isFailed.value = !isPassed
   emit('complete', isPassed, Math.round((correctCount / props.payload.clues.length) * 100))
+}
+
+function resetGame() {
+  props.payload.clues.forEach(c => {
+    userAnswers.value[c.number] = ''
+  })
+  isSubmitted.value = false
+  isFailed.value = false
 }
 </script>
 
@@ -58,12 +68,28 @@ function submitCrossword() {
           :maxlength="c.answer.length"
           placeholder="ВВЕДИТЕ ОТВЕТ"
           :disabled="isSubmitted"
+          @input="isFailed = false"
         />
       </div>
     </div>
 
+    <div v-if="isFailed" class="failed-notice">
+      <span>❌ В кроссворде есть ошибки. Проверьте введенные слова и попробуйте еще раз.</span>
+    </div>
+
     <div class="game-actions">
-      <button class="btn" :disabled="isSubmitted" @click="submitCrossword">
+      <button
+        v-if="isFailed"
+        class="btn ghost"
+        @click="resetGame"
+      >
+        Очистить ↺
+      </button>
+      <button
+        class="btn"
+        :disabled="isSubmitted"
+        @click="submitCrossword"
+      >
         Проверить кроссворд
       </button>
     </div>
@@ -98,20 +124,28 @@ function submitCrossword() {
 
 .clue-item label {
   font-size: 0.9rem;
-  color: var(--text);
 }
 
 .crossword-input {
-  padding: 10px;
-  border-radius: 10px;
-  border: 1px solid var(--line);
-  font-weight: 700;
-  letter-spacing: 0.1em;
   text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.failed-notice {
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #fdf2f0;
+  color: var(--danger);
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 16px;
+  border: 1px solid #f5c6cb;
 }
 
 .game-actions {
   display: flex;
   justify-content: flex-end;
+  gap: 10px;
 }
 </style>
