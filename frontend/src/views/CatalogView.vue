@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { usePlantStore, type Plant } from '@/stores/plants'
 import PlantCard from '@/components/catalog/PlantCard.vue'
 import RussiaMap from '@/components/catalog/RussiaMap.vue'
+import InteractiveAtlasModal from '@/components/catalog/InteractiveAtlasModal.vue'
 
 const router = useRouter()
 const plantStore = usePlantStore()
+
+const showAtlasModal = ref(false)
 
 onMounted(() => {
   plantStore.fetchPlants()
@@ -19,10 +22,16 @@ function handleSelectPlant(plant: Plant) {
 
 <template>
   <div class="catalog-view">
+    <InteractiveAtlasModal
+      :show="showAtlasModal"
+      :plants="plantStore.plants"
+      @close="showAtlasModal = false"
+    />
+
     <div class="section-head">
       <div>
         <h2>Каталог растений FloraAtlas</h2>
-        <p>Выберите растение из списка или на интерактивной географической карте.</p>
+        <p>Выберите растение из списка или откройте полноэкранный географический атлас.</p>
       </div>
     </div>
 
@@ -43,6 +52,7 @@ function handleSelectPlant(plant: Plant) {
       <div class="map-container">
         <RussiaMap
           :plants="plantStore.plants"
+          @open-atlas="showAtlasModal = true"
           @select-plant="handleSelectPlant"
         />
       </div>

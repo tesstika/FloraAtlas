@@ -24,9 +24,19 @@ const isSubmitting = ref(false)
 const showAddModal = ref(false)
 const newName = ref('')
 const newDescription = ref('')
-const newRegionName = ref('')
+const newRegionName = ref('Азия / Сибирь (Тайга)')
 const newStagesCount = ref(4)
 const newIcon = ref('🪴')
+
+const regionOptions = [
+  'Азия / Сибирь (Тайга)',
+  'Северная Америка (Калифорния)',
+  'Южная Америка (Амазония)',
+  'Европа (Альпы / Скандинавия)',
+  'Африка / Саванна (Мадагаскар)',
+  'Африка / Тропики (Эфиопия)',
+  'Австралия / Океания'
+]
 
 onMounted(async () => {
   await plantStore.fetchPlants()
@@ -92,7 +102,6 @@ async function handleDeletePlant() {
     const deletedId = selectedPlantId.value
     await teacherStore.deletePlantCard(deletedId)
 
-    // Clean up local stores
     plantStore.plants = plantStore.plants.filter(p => p.id !== deletedId)
     observationStore.observations = observationStore.observations.filter(o => o.plant_id !== deletedId)
 
@@ -126,7 +135,7 @@ async function handleAddPlant() {
       name: newName.value,
       description: newDescription.value,
       stages_count: newStagesCount.value,
-      region_name: newRegionName.value || 'Центральный регион',
+      region_name: newRegionName.value || 'Азия / Сибирь (Тайга)',
       icon: newIcon.value
     })
 
@@ -134,10 +143,9 @@ async function handleAddPlant() {
     selectedPlantId.value = res.plant.id
     showAddModal.value = false
 
-    // Reset form
     newName.value = ''
     newDescription.value = ''
-    newRegionName.value = ''
+    newRegionName.value = 'Азия / Сибирь (Тайга)'
     newStagesCount.value = 4
 
     emit('toast', 'Новое растение успешно добавлено в каталог!')
@@ -185,7 +193,9 @@ async function handleAddPlant() {
 
       <div class="field">
         <label>Маркер географического региона</label>
-        <input v-model="regionName" placeholder="Регион распространения" />
+        <select v-model="regionName">
+          <option v-for="r in regionOptions" :key="r" :value="r">{{ r }}</option>
+        </select>
       </div>
 
       <div class="field full-width">
@@ -240,7 +250,9 @@ async function handleAddPlant() {
 
             <div class="field">
               <label>Географический регион</label>
-              <input v-model="newRegionName" placeholder="Например: Сибирь и Дальний Восток" />
+              <select v-model="newRegionName">
+                <option v-for="r in regionOptions" :key="r" :value="r">{{ r }}</option>
+              </select>
             </div>
 
             <div class="field full-width">
