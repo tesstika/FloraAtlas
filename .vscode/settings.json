@@ -1,9 +1,0 @@
-{
-    "terminal.integrated.defaultProfile.windows": "PowerShell 7",
-        "terminal.integrated.profiles.windows": {
-            "PowerShell 7": {
-                "path": "D:\\Programs\\PowerShell\\pwsh.exe",
-                "icon": "terminal-powershell"
-            }
-        }
-}
